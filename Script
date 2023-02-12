@@ -1,0 +1,200 @@
+#pobieram co potrzebne
+import time
+import pandas
+import openpyxl
+from datetime import date
+from selenium.webdriver.support.ui import Select
+from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+
+
+#ask for login and pass
+login = input("Podaj adres e-mail \n")
+hasło = input("Podaj hasło \n")
+
+#from which excel row data has to be taken
+Od_którego_wiersza_zacząć = input("Od_którego_wiersza_zacząć \n")
+Od_którego_wiersza_zacząć_panda = int(int(Od_którego_wiersza_zacząć)-2)
+
+dzisiaj = date.today()
+dzisiaj = str(dzisiaj)
+pocięte_dzisiaj = dzisiaj.split("-")
+aktualny_rok = pocięte_dzisiaj[0]
+aktualny_miesiąc = int(pocięte_dzisiaj[1])
+aktualny_dzień = pocięte_dzisiaj[2]
+
+#get necessary file and ask for needed data
+# ścieżka = input("Podaj ścieżkę pliku \n")
+# nazwa = input("Podaj nazwę pliku \n")
+# gdzie_jest_plik = 'r' + '"' + ścieżka + '\\' + nazwa + '.xlsx' + '"'
+# print(gdzie_jest_plik)
+
+plik = Path = (r"---ENTER YOUR PATH TO FILE IN HERE---.xlsx")
+# plik = Path = (gdzie_jest_plik)
+plik = openpyxl.load_workbook(plik,read_only=True, data_only = True)
+sheet = plik.active
+godziny = pandas.read_excel(r"---ENTER YOUR PATH TO FILE IN HERE---.xlsx")
+# godziny = pandas.read_excel(gdzie_jest_plik)
+
+#here are all the functions
+#pobieram dane z pojedynczego wiersza i przypisuje wartości zmiennym
+
+def Zaciągnij_dane():
+    global  Data
+    Data = sheet["A" + Od_którego_wiersza_zacząć].value
+    if Data == None:
+        print("Brak daty!")
+    ##########################
+    global Numer_taska
+    Numer_taska = sheet["B" + Od_którego_wiersza_zacząć].value
+    if Numer_taska == None:
+        print("Brak numeru zadania!")
+    #########################
+    global Co_było_robione
+    Co_było_robione = sheet["C" + Od_którego_wiersza_zacząć].value
+    if Co_było_robione == None:
+        print("Brak opisu co było zrobione!")
+
+def Konwersja_daty():
+    data = str(Data)
+    pocięta_data = data.split()
+    data = pocięta_data[0]
+    pocięta_data_do_fd = data.split("-")
+    global rok
+    rok = pocięta_data_do_fd[0]
+    global miesiąc
+    miesiąc = int(pocięta_data_do_fd[1])
+    global dzień
+    dzień = pocięta_data_do_fd[2]
+
+def Konwersja_czasu():
+    global Ile_czasu_zajęło
+    global godziny
+    Ile_czasu_zajęło = pandas.DataFrame(godziny, index=[Od_którego_wiersza_zacząć_panda], columns=['Working Time'])
+    Ile_czasu_zajęło = str(Ile_czasu_zajęło)
+    pocięte_ile_czasu_zajęło = Ile_czasu_zajęło.split()
+    Ile_czasu_zajęło = pocięte_ile_czasu_zajęło[3]
+    pocięte_ile_czasu_zajęło = Ile_czasu_zajęło.split(":")
+    Ile_czasu_zajęło = pocięte_ile_czasu_zajęło[0] + ":" + pocięte_ile_czasu_zajęło[1]
+
+
+def Przycisk_nie_zapamiętuj():
+    try:
+        driver.find_element_by_id('idBtn_Back').click()
+    except:
+        try:
+            Przycisk_nie_zapamiętuj()
+        except RuntimeError:
+            time.sleep(5)
+            Przycisk_nie_zapamiętuj()
+
+def Dodaj_czas():
+    driver.find_element_by_id('time_entry_hhmm').send_keys(Ile_czasu_zajęło)
+
+def Co_było_robione_funkcja():
+    driver.find_element_by_id('time_entry_note').send_keys(Co_było_robione)
+
+def Wchodzimy_w_taska():
+    driver.find_element_by_class_name('search-title').click()
+
+def Czy_poprzedni_miesiąc_funkcja():
+    global Czy_poprzedni_miesiąc
+    if aktualny_miesiąc > miesiąc:
+        Czy_poprzedni_miesiąc = True
+    else:
+        Czy_poprzedni_miesiąc = False
+
+
+def Cofnij_miesiąc():
+    ile = aktualny_miesiąc - miesiąc
+    for i in range(ile):
+        # element = wait.until(EC.element_to_be_clickable((By.CLASS_NAME('ui-datepicker-prev'))))
+        driver.find_element_by_class_name('ui-datepicker-prev').click()
+
+def WybierzMiesiąciDzień():
+    #klikam datę, żeby wyświetlił się kalendarz
+    global dzień
+    global aktualny_dzień
+    driver.find_element_by_id('executed_at_new').click()
+    days = driver.find_elements_by_xpath('//a[@class="ui-state-default"]')
+    Czy_poprzedni_miesiąc_funkcja()
+    if Czy_poprzedni_miesiąc == True:
+        Cofnij_miesiąc()
+        days = driver.find_elements_by_xpath('//a[@class="ui-state-default"]')
+        if aktualny_dzień == dzień:
+            driver.find_element_by_id('new_timeentry-submit').click()
+        else:
+            days[(int(dzień) - 1)].click()
+    else:
+        if aktualny_dzień == dzień:
+            pass
+        else:
+            days[(int(dzień) - 1)].click()
+
+def Rozwijam_listę_czasu():
+    try:
+        driver.find_element_by_xpath('//body').send_keys("m")
+        element = wait.until(EC.element_to_be_clickable((By.ID, 'time_entry_hhmm')))
+    except:
+        Rozwijam_listę_czasu()
+
+#sprawdzam kod poza pętlą
+######################################################################################################
+
+#######################################################################################################
+#tutaj jest otwarcie przeglądarki, zalogowanie do freshdesk
+
+driver = webdriver.Chrome(executable_path=r"---ENTER PATH TO YOUR CHROME DRIVER IN HERE---\chromedriver.exe")
+driver.maximize_window()
+driver.get("https://COMPANY NAME.freshservice.com/helpdesk/tickets")
+wait = WebDriverWait(driver, 60)
+element = wait.until(EC.element_to_be_clickable((By.XPATH, '/html/body/div[4]/div[2]/div/div/div/div/div/div[2]/div[1]/div[2]/button/p')))
+driver.find_element_by_xpath('/html/body/div[4]/div[2]/div/div/div/div/div/div[2]/div[1]/div[2]/button/p').click()
+element = wait.until(EC.element_to_be_clickable((By.ID, 'i0116')))
+driver.find_element_by_xpath('/html/body/div/form[1]/div/div/div[2]/div[1]/div/div/div/div/div[1]/div[3]/div/div/div/div[2]/div[2]/div/input[1]').send_keys(login)
+driver.find_element_by_xpath('/html/body/div/form[1]/div/div/div[2]/div[1]/div/div/div/div/div[1]/div[3]/div/div/div/div[2]/div[2]/div/input[1]').send_keys(Keys.ENTER)
+element = wait.until(EC.element_to_be_clickable((By.NAME, 'passwd')))
+driver.find_element_by_name('passwd').send_keys(hasło)
+driver.find_element_by_name('passwd').send_keys(Keys.ENTER)
+element = wait.until(EC.element_to_be_clickable((By.ID, 'idBtn_Back')))
+driver.find_element_by_id('idBtn_Back').click()
+
+#mail loop in here
+while True:
+    Zaciągnij_dane()
+    Konwersja_daty()
+    Konwersja_czasu()
+
+    #look for ticket
+    element = wait.until(EC.element_to_be_clickable((By.ID, 'SearchBar')))
+    driver.find_element_by_id('header_search').send_keys("INC-" + str(Numer_taska))
+    driver.find_element_by_id('header_search').send_keys(Keys.ENTER)
+    #enter ticket
+    element = wait.until(EC.element_to_be_clickable((By.CLASS_NAME, 'search-title')))
+    Wchodzimy_w_taska()
+    #add time
+
+    #expand time list
+    Rozwijam_listę_czasu()
+    #add time
+    Dodaj_czas()
+    #add description of what I done
+    time.sleep(1)
+    Co_było_robione_funkcja()
+    #choose when it took plac
+    #day + month
+    WybierzMiesiąciDzień()
+    #save
+    element = wait.until(EC.element_to_be_clickable((By.ID, "new_timeentry-submit")))
+    driver.find_element_by_id('new_timeentry-submit').click()
+    time.sleep(1)
+    element = wait.until(EC.element_to_be_clickable((By.ID, "header_search")))
+    Od_którego_wiersza_zacząć = int(Od_którego_wiersza_zacząć)
+    Od_którego_wiersza_zacząć += 1
+    Od_którego_wiersza_zacząć = str(Od_którego_wiersza_zacząć)
+    Od_którego_wiersza_zacząć_panda += 1
+
